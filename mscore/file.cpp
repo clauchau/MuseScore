@@ -3057,40 +3057,36 @@ QJsonObject MuseScore::saveMetadataJSON(Score* score)
       QString title;
       Text* t = score->getText(Tid::TITLE);
       if (t)
-            title = QTextDocumentFragment::fromHtml(t->xmlText()).toPlainText().replace("&amp;","&").replace("&gt;",">").replace("&lt;","<").replace("&quot;", "\"");
+            title = t->plainText();
       if (title.isEmpty())
             title = score->metaTag("workTitle");
       if (title.isEmpty())
             title = score->title();
-      title = title.simplified();
       json.insert("title", title);
 
       // subtitle
       QString subtitle;
       t = score->getText(Tid::SUBTITLE);
       if (t)
-            subtitle = QTextDocumentFragment::fromHtml(t->xmlText()).toPlainText().replace("&amp;","&").replace("&gt;",">").replace("&lt;","<").replace("&quot;", "\"");
-      subtitle = subtitle.simplified();
+            subtitle = t->plainText();
       json.insert("subtitle", subtitle);
 
       // composer
       QString composer;
       t = score->getText(Tid::COMPOSER);
       if (t)
-            composer = QTextDocumentFragment::fromHtml(t->xmlText()).toPlainText().replace("&amp;","&").replace("&gt;",">").replace("&lt;","<").replace("&quot;", "\"");
+            composer = t->plainText();
       if (composer.isEmpty())
             composer = score->metaTag("composer");
-      composer = composer.simplified();
       json.insert("composer", composer);
 
       // poet
       QString poet;
       t = score->getText(Tid::POET);
       if (t)
-            poet = QTextDocumentFragment::fromHtml(t->xmlText()).toPlainText().replace("&amp;","&").replace("&gt;",">").replace("&lt;","<").replace("&quot;", "\"");
+            poet = t->plainText();
       if (poet.isEmpty())
             poet = score->metaTag("lyricist");
-      poet = poet.simplified();
       json.insert("poet", poet);
 
       json.insert("mscoreVersion", score->mscoreVersion());
@@ -3376,6 +3372,32 @@ bool MuseScore::exportAllMediaFiles(const QString& inFilePath, const QString& ou
       jsonWriter.addValue(doc.toJson(QJsonDocument::Compact), true, true);
 
       return res;
+      }
+
+//---------------------------------------------------------
+//   exportScoreMetadata
+//---------------------------------------------------------
+
+bool MuseScore::exportScoreMetadata(const QString& inFilePath, const QString& outFilePath)
+      {
+      std::unique_ptr<MasterScore> score(mscore->readScore(inFilePath));
+      if (!score)
+            return false;
+
+      score->switchToPageMode();
+
+      //// JSON specification ///////////////////////////
+      //jsonForMedia["metadata"] = mdJson;
+      ///////////////////////////////////////////////////
+
+      CustomJsonWriter jsonWriter(outFilePath);
+
+      //export metadata
+      QJsonDocument doc(mscore->saveMetadataJSON(score.get()));
+      jsonWriter.addKey("metadata");
+      jsonWriter.addValue(doc.toJson(QJsonDocument::Compact), true, true);
+
+      return true;
       }
 
 }

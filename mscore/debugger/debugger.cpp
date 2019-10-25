@@ -166,6 +166,10 @@ Debugger::Debugger(QWidget* parent)
       connect(selectButton, SIGNAL(clicked()), SLOT(selectElement()));
       connect(resetButton,  SIGNAL(clicked()), SLOT(resetElement()));
       connect(layoutButton, SIGNAL(clicked()), SLOT(layout()));
+
+      back->setIcon(*icons[int(Icons::goPrevious_ICON)]);
+      forward->setIcon(*icons[int(Icons::goNext_ICON)]);
+      reload->setIcon(*icons[int(Icons::viewRefresh_ICON)]);
       }
 
 //---------------------------------------------------------
@@ -753,6 +757,9 @@ MeasureView::MeasureView()
       connect(mb.nextButton, SIGNAL(clicked()), SLOT(nextClicked()));
       connect(mb.prevButton, SIGNAL(clicked()), SLOT(prevClicked()));
       connect(mb.mmRest, SIGNAL(clicked()), SLOT(mmRestClicked()));
+
+      mb.prevButton->setIcon(*icons[int(Icons::goPrevious_ICON)]);
+      mb.nextButton->setIcon(*icons[int(Icons::goNext_ICON)]);
       }
 
 //---------------------------------------------------------

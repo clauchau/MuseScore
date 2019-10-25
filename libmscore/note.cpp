@@ -1782,10 +1782,6 @@ Element* Note::drop(EditData& data)
 
             case ElementType::NOTE:
                   {
-                  if (ch->noteType() != NoteType::NORMAL) {
-                        delete e;
-                        return 0;
-                        }
                   // calculate correct transposed tpc
                   Note* n = toNote(e);
                   Interval v = part()->instrument(ch->tick())->transpose();
@@ -2367,7 +2363,11 @@ void Note::editDrag(EditData& ed)
       {
       Chord* ch = chord();
       Segment* seg = ch->segment();
-      if (seg) {
+      // adjust segment on plain drag or Shift+cursor,
+      // adjust note/chord for Ctrl+drag or plain cursor
+      if (seg &&
+          (((ed.buttons & Qt::LeftButton) && !(ed.modifiers & Qt::ControlModifier))
+           || (ed.modifiers & Qt::ShiftModifier))) {
             const Spatium deltaSp = Spatium(ed.delta.x() / spatium());
             seg->undoChangeProperty(Pid::LEADING_SPACE, seg->extraLeadingSpace() + deltaSp);
             }
@@ -2754,6 +2754,8 @@ QString Note::accessibleInfo() const
             pitchName = chord()->noStem() ? QObject::tr("Beat slash") : QObject::tr("Rhythm slash");
       else if (staff()->isDrumStaff(tick()) && drumset)
             pitchName = qApp->translate("drumset", drumset->name(pitch()).toUtf8().constData());
+      else if (staff()->isTabStaff(tick()))
+            pitchName = QObject::tr("%1; String %2; Fret %3").arg(tpcUserName(false)).arg(QString::number(string() + 1)).arg(QString::number(fret()));
       else
             pitchName = tpcUserName(false);
       return QObject::tr("%1; Pitch: %2; Duration: %3%4").arg(noteTypeUserName()).arg(pitchName).arg(duration).arg((chord()->isGrace() ? "" : QString("; %1").arg(voice)));
@@ -2766,13 +2768,17 @@ QString Note::accessibleInfo() const
 QString Note::screenReaderInfo() const
       {
       QString duration = chord()->durationUserName();
-      QString voice = QObject::tr("Voice: %1").arg(QString::number(track() % VOICES + 1));
+      Measure* m = chord()->measure();
+      bool voices = m ? m->hasVoices(staffIdx()) : false;
+      QString voice = voices ? QObject::tr("Voice: %1").arg(QString::number(track() % VOICES + 1)) : "";
       QString pitchName;
       const Drumset* drumset = part()->instrument()->drumset();
       if (fixed() && headGroup() == NoteHead::Group::HEAD_SLASH)
             pitchName = chord()->noStem() ? QObject::tr("Beat Slash") : QObject::tr("Rhythm Slash");
       else if (staff()->isDrumStaff(tick()) && drumset)
             pitchName = qApp->translate("drumset", drumset->name(pitch()).toUtf8().constData());
+      else if (staff()->isTabStaff(tick()))
+            pitchName = QObject::tr("%1 String %2 Fret %3").arg(tpcUserName(true)).arg(QString::number(string() + 1)).arg(QString::number(fret()));
       else
             pitchName = tpcUserName(true);
       return QString("%1 %2 %3%4").arg(noteTypeUserName()).arg(pitchName).arg(duration).arg((chord()->isGrace() ? "" : QString("; %1").arg(voice)));
@@ -2815,7 +2821,11 @@ QString Note::accessibleExtraInfo() const
                   }
             }
 
-      rez = QString("%1 %2").arg(rez).arg(chord()->accessibleExtraInfo());
+      // only read extra information for top note of chord
+      // (it is reached directly on next/previous element)
+      if (this == chord()->upNote())
+            rez = QString("%1 %2").arg(rez).arg(chord()->accessibleExtraInfo());
+
       return rez;
       }
 
@@ -2864,6 +2874,8 @@ Element* Note::nextInEl(Element* e)
       if (e == _el.back())
             return nullptr;
       auto i = std::find(_el.begin(), _el.end(), e);
+      if (i == _el.end())
+            return nullptr;
       return *(i+1);
       }
 
@@ -2877,7 +2889,14 @@ Element* Note::prevInEl(Element* e)
       if (e == _el.front())
             return nullptr;
       auto i = std::find(_el.begin(), _el.end(), e);
+      if (i == _el.end())
+            return nullptr;
       return *(i-1);
+      }
+
+static bool tieValid(Tie* tie)
+      {
+      return (tie && !tie->segmentsEmpty());
       }
 
 //---------------------------------------------------------
@@ -2898,7 +2917,7 @@ Element* Note::nextElement()
                   Element* next = nextInEl(e); // return next element in _el
                   if (next)
                         return next;
-                  else if (_tieFor)
+                  else if (tieValid(_tieFor))
                         return _tieFor->frontSegment();
                   else if (!_spannerFor.empty()) {
                         for (auto i : _spannerFor) {
@@ -2924,7 +2943,7 @@ Element* Note::nextElement()
             case ElementType::ACCIDENTAL:
                   if (!_el.empty())
                         return _el[0];
-                  if (_tieFor)
+                  if (tieValid(_tieFor))
                         return _tieFor->frontSegment();
                   if (!_spannerFor.empty()) {
                         for (auto i : _spannerFor) {
@@ -2937,7 +2956,7 @@ Element* Note::nextElement()
             case ElementType::NOTE:
                   if (!_el.empty())
                         return _el[0];
-                  if (_tieFor)
+                  if (tieValid(_tieFor))
                         return _tieFor->frontSegment();
                   if (!_spannerFor.empty()) {
                         for (auto i : _spannerFor) {
@@ -2977,7 +2996,7 @@ Element* Note::prevElement()
                         return _el.back();
                   return this;
             case ElementType::GLISSANDO_SEGMENT:
-                  if (_tieFor)
+                  if (tieValid(_tieFor))
                         return _tieFor->frontSegment();
                   else if (!_el.empty())
                         return _el.back();
@@ -3001,7 +3020,7 @@ Element* Note::lastElementBeforeSegment()
                         return i->spannerSegments().front();
                   }
             }
-      if (_tieFor)
+      if (tieValid(_tieFor))
             return _tieFor->frontSegment();
       if (!_el.empty())
             return _el.back();

@@ -2056,7 +2056,6 @@ void Beam::write(XmlWriter& xml) const
 
 void Beam::read(XmlReader& e)
       {
-      QPointF p1, p2;
       qreal _spatium = spatium();
       if (score()->mscVersion() < 301)
             _id = e.intAttribute("id");
@@ -2491,5 +2490,29 @@ Fraction Beam::rtick() const
       {
       return _elements.empty() ? Fraction(0, 1) : _elements.front()->segment()->rtick();
       }
-}
 
+//---------------------------------------------------------
+//   iconType
+//---------------------------------------------------------
+
+IconType Beam::iconType(Mode mode)
+      {
+      switch (mode) {
+            case Mode::BEGIN:
+                  return IconType::SBEAM;
+            case Mode::MID:
+                  return IconType::MBEAM;
+            case Mode::NONE:
+                  return IconType::NBEAM;
+            case Mode::BEGIN32:
+                  return IconType::BEAM32;
+            case Mode::BEGIN64:
+                  return IconType::BEAM64;
+            case Mode::AUTO:
+                  return IconType::AUTOBEAM;
+            default:
+                  break;
+            }
+      return IconType::NONE;
+      }
+}

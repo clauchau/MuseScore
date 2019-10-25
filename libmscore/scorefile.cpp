@@ -159,6 +159,7 @@ void Score::writeMovement(XmlWriter& xml, bool selectionOnly)
       xml.tag("showUnprintable", _showUnprintable);
       xml.tag("showFrames",      _showFrames);
       xml.tag("showMargins",     _showPageborders);
+      xml.tag("markIrregularMeasures", _markIrregularMeasures, true);
 
       QMapIterator<QString, QString> i(_metaTags);
       while (i.hasNext()) {
@@ -1286,7 +1287,8 @@ void Score::writeSegments(XmlWriter& xml, int strack, int etrack,
                         cr->writeTupletEnd(xml);
                         }
 
-                  segment->write(xml);    // write only once
+                  if (!(e->isRest() && toRest(e)->isGap()))
+                        segment->write(xml);    // write only once
                   if (forceTimeSig) {
                         if (segment->segmentType() == SegmentType::KeySig)
                               keySigWritten = true;

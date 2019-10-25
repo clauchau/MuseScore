@@ -284,8 +284,7 @@ void ScoreView::mouseReleaseEvent(QMouseEvent* mouseEvent)
                   if (editData.startMove == editData.pos && clickOffElement) {
                         _score->deselectAll();
                         _score->update();
-                        mscore->updateInspector();
-                        ScoreAccessibility::instance()->updateAccessibilityInfo();
+                        mscore->endCmd();
                         }
             case ViewState::EDIT:
             case ViewState::NOTE_ENTRY:
@@ -743,6 +742,11 @@ void ScoreView::keyPressEvent(QKeyEvent* ev)
 
       if (!( (editData.modifiers & Qt::ShiftModifier) && (editData.key == Qt::Key_Backtab) )) {
             if (editData.element->edit(editData)) {
+                  if (state != ViewState::EDIT) {
+                        // textTab or other function may have terminated edit mode
+                        mscore->endCmd();
+                        return;
+                        }
                   if (editData.element->isTextBase())
                         mscore->textTools()->updateTools(editData);
                   else
